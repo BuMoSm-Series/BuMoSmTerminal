@@ -19,6 +19,8 @@ Built with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui) �
 - Theme switching — follow the OS light/dark setting, or write your own theme as a JSON file
 - Adjustable scroll speed and easing, with automatic catch-up when data arrives faster than the view can scroll
 - GPU-accelerated UI via GPUI (falls back to CPU rendering if no GPU is available)
+- Full keyboard operation — every operation can be done without a mouse; press F1 to open the shortcut list
+- Per-mode send history — recall previously sent data, edit it and send it again
 
 ## Built With
 
@@ -31,6 +33,53 @@ Built with [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui) �
 - No additional runtime or GPU required
 
 ## Usage
+
+### Keyboard shortcuts
+
+| Action | Shortcut |
+|---|---|
+| Connect / disconnect | F5 |
+| Go to the send data field | F6 |
+| Send (in the send data field) | Enter |
+| Open send history | Alt+↓ |
+| Switch between text and hex display | Ctrl+M |
+| Clear the log | Ctrl+L |
+| Open settings | Ctrl+, |
+| Open the keyboard shortcut list | F1 |
+| Copy selection (log) | Ctrl+C |
+| Select all (log) | Ctrl+A |
+| Copy line (while the right-click menu is open) | Ctrl+Shift+C |
+| Scroll one line up / down (log) | ↑ / ↓ |
+| Scroll one page up / down (log) | PageUp / PageDown |
+| Scroll to the top / end (log) | Home / End |
+
+**Tab** and **Shift+Tab** move between buttons, the send data field and the log. The focused item is shown with a focus ring, and a focused button is pressed with **Enter** or **Space**. When the application starts, the communication mode select has the focus.
+
+**F1** opens the shortcut list. Choose a row with the arrow keys and press **Enter**, or press the shortcut itself. Rows marked with `※` (sending, copy line and the log operations) only work in a specific place, so they are shown in the list but cannot be run from it.
+
+While the settings panel is open, all shortcuts on the main window are disabled.
+
+### Sending data
+
+Type into the send data field and press **Enter**, or click **Send**. Data can be sent only while connected.
+
+The send terminator configured in the settings is appended to each transmission.
+
+**Disconnecting with unsent data (serial)**
+
+If you disconnect while data is still waiting to be sent — for example, when hardware flow control holds transmission because the other side keeps CTS off — a confirmation appears. Choose **Yes** to discard the unsent data and disconnect, or **No** to stay connected and keep sending.
+
+### Send history
+
+The button between **Send** and the send data field lists the data you have sent. It can also be opened with **Alt+↓**.
+
+- Choosing an entry puts it into the send data field without sending it, with the cursor at the end, so you can append to it before pressing **Enter**
+- Use the × on a row, or **Delete**, to remove a single entry, and **Clear all** at the bottom of the list to remove them all
+- Up and down move through the entries and **Clear all**; **Esc** closes the list
+
+Only data that was actually sent is recorded. Sending the same data again moves it to the top instead of adding a duplicate. The send terminator is not included.
+
+The history is kept separately for each communication mode (Serial, TCP Server, TCP Client) and stored in `config.json`, so it survives a restart. The number of entries kept is configurable in the settings (1–100, default 20); when the limit is exceeded, the oldest entries are removed.
 
 ### Sending mixed text and binary data
 
@@ -47,7 +96,7 @@ Hello{0D 0A}
 
 ### Display modes
 
-Click **Text** or **Hex** to switch the log display:
+Click **Text** or **Hex**, or press **Ctrl+M**, to switch the log display:
 
 - **Text** — received bytes are decoded as UTF-8. Bytes that cannot form valid UTF-8 are shown as `�` (U+FFFD). Each entry ends with `↵` for a normal terminator, or `│` for a timeout.
 - **Hex** — all bytes are shown as space-separated 2-digit hex values (e.g. `41 42 43 0D 0A`).
@@ -58,9 +107,11 @@ Switching between the two modes clears the current text selection. The rendered 
 
 - **Ctrl+A** — selects every line currently held in the log
 - **Ctrl+C** — copies the selected text in the log area
-- **Right-click** — opens a context menu with "Copy Selection" and "Copy Line"
+- **Right-click** — opens a context menu with "Copy Selection" and "Copy Line". While the menu is open, **Ctrl+Shift+C** copies the line you right-clicked
 
 While dragging to select text, moving the cursor outside the log area scrolls the view automatically, so a selection can be extended beyond what is currently visible.
+
+While the log has the focus, it can also be scrolled with the keyboard: **↑ / ↓** one line, **PageUp / PageDown** one page, **Home / End** to the top or end.
 
 ### Log capacity
 
@@ -76,7 +127,9 @@ The state is written when the window is closed normally. It is not saved if the 
 
 ### Settings
 
-Click **Settings** to open the settings panel. Available options depend on the communication mode:
+Click the settings (gear) button at the right end of the toolbar, or press **Ctrl+,**, to open the settings panel. Settings cannot be changed while connected or listening.
+
+The panel is divided into four groups: **Display**, **Communication**, **History** and **Behavior**. The options in the Communication group depend on the communication mode:
 
 **Serial**
 
@@ -91,18 +144,19 @@ Click **Settings** to open the settings panel. Available options depend on the c
 | Timeout (ms) | Receive timeout. A line is finalized when no new data arrives within this period |
 | Send Terminator | Bytes appended to each transmission (None / CR / LF / CR+LF / ETX / EOT) |
 | Recv Terminator | Byte sequence that marks the end of a received line |
-| Send Color | Log color for sent data |
-| Recv Color | Log color for received data |
 
 **Common to all modes**
 
-| Setting | Description |
-|---|---|
-| Language | Display language |
-| Theme | Color scheme (see [Theme](#theme)) |
-| Scroll Speed | How long one wheel notch takes to scroll (see [Scrolling](#scrolling)) |
-| Scroll Easing | How long the movement takes to speed up and slow down |
-| Battery Saver | Caps the frame rate at 30 FPS while running on battery |
+| Group | Setting | Description |
+|---|---|---|
+| Display | Language | Display language |
+| Display | Theme | Color scheme (see [Theme](#theme)) |
+| Display | Send Color | Log color for sent data |
+| Display | Recv Color | Log color for received data |
+| History | Send history count | Number of send history entries kept per communication mode (1–100, default 20) |
+| Behavior | Scroll Speed | How long one wheel notch takes to scroll (see [Scrolling](#scrolling)) |
+| Behavior | Scroll Easing | How long the movement takes to speed up and slow down |
+| Behavior | On battery | **Normal FPS** or **Reduce FPS**. Reduce FPS caps the frame rate at 30 FPS while running on battery |
 
 **TCP Server**
 
@@ -112,7 +166,6 @@ Click **Settings** to open the settings panel. Available options depend on the c
 | Listen Port | Port number to accept connections on |
 | Timeout (ms) | Receive timeout |
 | Send / Recv Terminator | Same as serial |
-| Send / Recv Color | Same as serial |
 
 The server accepts **one client at a time**. After a client disconnects, it automatically resumes listening for the next connection.
 
@@ -125,7 +178,6 @@ The server accepts **one client at a time**. After a client disconnects, it auto
 | Connect Timeout (ms) | Maximum time to wait for a connection to be established |
 | Timeout (ms) | Receive timeout |
 | Send / Recv Terminator | Same as serial |
-| Send / Recv Color | Same as serial |
 
 ### Receive timeout
 
@@ -173,7 +225,7 @@ The color scheme is selected under **Theme** in the settings panel. The list is 
 - **Standard** — the built-in light and dark schemes, plus **Follow OS**, which tracks the system light/dark setting
 - **Theme Files** — schemes loaded from the `themes` folder next to the executable
 
-Themes in the second group are plain JSON files. Editing one takes effect immediately, without restarting the application. See `README_en.txt` in the `themes` folder for the file format and the list of available color keys.
+Themes in the second group are plain JSON files. Editing one takes effect immediately, without restarting the application. See `THEME_README_en.txt` in the `themes` folder for the file format and the list of available color keys.
 
 ### Settings file
 
@@ -193,7 +245,7 @@ Only one instance of BuMoSm Terminal can run at a time. If you launch a second i
 
 ## License
 
-Copyright 2026 Hiroki
+Copyright 2026 nabehiro  
 Licensed under the [Apache License, Version 2.0](LICENSE).
 
 This software is provided "as is", without warranty of any kind.  
@@ -231,6 +283,8 @@ Windows向けのシンプルなシリアル・TCP通信ターミナルです。
 - 配色の切り替えに対応（OSの設定に追従、またはJSONファイルで自作）
 - スクロールの速度・加減速度を調整可能。表示が追いつかないほどデータが届いた場合は自動的に速度を上げて回収
 - GPUIによるGPU描画（GPU未搭載の場合はCPU描画で動作）
+- すべての操作をキーボードだけで実行可能（F1 でキーの一覧を表示）
+- 通信方式ごとの送信履歴 — 送信したデータを呼び出し、編集して再送信
 
 ## 開発言語・フレームワーク
 
@@ -243,6 +297,53 @@ Windows向けのシンプルなシリアル・TCP通信ターミナルです。
 - 追加のランタイムやGPUは不要
 
 ## 使い方
+
+### キー操作
+
+| 操作 | キー |
+|---|---|
+| 接続・切断 | F5 |
+| 送信データ入力欄へ移る | F6 |
+| 送信（送信データ入力欄で） | Enter |
+| 送信履歴を開く | Alt+↓ |
+| 文字表示と16進表示の切り替え | Ctrl+M |
+| ログを消去 | Ctrl+L |
+| 設定を開く | Ctrl+, |
+| キーの一覧を開く | F1 |
+| 選択部をコピー（ログ） | Ctrl+C |
+| すべて選択（ログ） | Ctrl+A |
+| 行をコピー（右クリックメニューを開いているとき） | Ctrl+Shift+C |
+| 1行上へ・1行下へ（ログ） | ↑ / ↓ |
+| 1画面上へ・1画面下へ（ログ） | PageUp / PageDown |
+| 先頭へ・末尾へ（ログ） | Home / End |
+
+**Tab**・**Shift+Tab** でボタン・送信データ入力欄・ログの間を移動できます。フォーカスのある場所には枠が表示され、ボタンは **Enter** または **Space** で押せます。起動直後は通信方式の選択にフォーカスがあります。
+
+**F1** でキーの一覧を開きます。矢印キーで選んで **Enter** を押すか、そのキーを直接押すと実行できます。`※` の付いた行（送信・行をコピー・ログの操作）は決まった場所でだけ使える操作のため、一覧には表示しますが、一覧からは実行できません。
+
+設定パネルを開いている間は、メイン画面のキー操作はすべて無効になります。
+
+### 送信
+
+送信データ入力欄に入力して **Enter** を押すか、**送信**ボタンをクリックします。送信できるのは接続中だけです。
+
+送信するデータの末尾には、設定の送信終端が付加されます。
+
+**未送信のデータがあるときの切断（シリアル通信）**
+
+送信待ちのデータが残っている状態で切断しようとすると（例：ハードウェアフロー制御で相手が CTS を OFF にしたまま送信が止まっているとき）、確認のメッセージが表示されます。**はい**で未送信のデータを破棄して切断し、**いいえ**で接続したまま送信を続けます。
+
+### 送信履歴
+
+**送信**ボタンと送信データ入力欄の間のボタンで、送信したデータの一覧を開きます。**Alt+↓** でも開けます。
+
+- 一覧から選ぶと、その内容が送信データ入力欄に入ります（送信はしません）。カーソルは末尾に置かれるので、追記してから **Enter** で送信できます
+- 行の × または **Delete** で1件消せます。一覧の下の「すべて消す」ですべて消せます
+- 上下キーで「すべて消す」を含む一覧を移動し、**Esc** で閉じます
+
+記憶するのは実際に送信できたデータだけです。同じデータを送信した場合は、重ねて記憶せずに一番上へ移ります。送信終端は含みません。
+
+送信履歴は通信方式（シリアル通信・TCPサーバ・TCPクライアント）ごとに分けて `config.json` に保存され、再起動後も残ります。記憶する件数は設定で変更できます（1〜100、既定値 20）。件数を超えると古いものから消えます。
 
 ### 文字列とバイナリを混在して送信する
 
@@ -259,7 +360,7 @@ Hello{0D 0A}
 
 ### 表示モード
 
-**文字**・**16進**ボタンで表示を切り替えられます。
+**文字**・**16進**ボタン、または **Ctrl+M** で表示を切り替えられます。
 
 - **文字** — 受信バイト列をUTF-8として表示します。有効なUTF-8に変換できないバイトは `�`（U+FFFD）で表示されます。各行の末尾は終端文字による区切りの場合 `↵`、タイムアウトによる区切りの場合 `│` が付きます。
 - **16進** — すべてのバイトを16進数2桁のスペース区切りで表示します（例：`41 42 43 0D 0A`）。
@@ -270,9 +371,11 @@ Hello{0D 0A}
 
 - **Ctrl+A** — ログに保持されている全行を選択します
 - **Ctrl+C** — ログエリアで選択したテキストをコピーします
-- **右クリック** — 「選択部をコピー」「行をコピー」のコンテキストメニューが表示されます
+- **右クリック** — 「選択部をコピー」「行をコピー」のコンテキストメニューが表示されます。メニューを開いている間は **Ctrl+Shift+C** で右クリックした行をコピーできます
 
 ドラッグで範囲選択している間にマウスカーソルをログ表示エリアの外へ動かすと、表示が自動的にスクロールします。画面に見えていない範囲まで続けて選択できます。
+
+ログにフォーカスがあるときは、キーでもスクロールできます。**↑ / ↓** で1行、**PageUp / PageDown** で1画面、**Home / End** で先頭・末尾へ移動します。
 
 ### ログの最大行数
 
@@ -288,7 +391,9 @@ Hello{0D 0A}
 
 ### 設定
 
-**設定**ボタンをクリックすると設定パネルが開きます。表示される項目は通信方式によって異なります。
+ツールバー右端の設定（歯車）ボタンをクリックするか、**Ctrl+,** を押すと設定パネルが開きます。接続中・待受中は設定を変更できません。
+
+設定パネルは **表示**・**通信**・**履歴**・**動作** の4つの区分けに分かれています。「通信」に表示される項目は通信方式によって異なります。
 
 **シリアル通信**
 
@@ -303,18 +408,19 @@ Hello{0D 0A}
 | タイムアウト(ms) | 受信タイムアウト。最後の受信からこの時間が経過すると行を確定します |
 | 送信終端 | 送信データの末尾に付加するバイト列（None / CR / LF / CR+LF / ETX / EOT） |
 | 受信終端 | 受信行の区切りを示すバイト列 |
-| 送信色 | 送信データのログ表示色 |
-| 受信色 | 受信データのログ表示色 |
 
 **全モード共通**
 
-| 設定項目 | 説明 |
-|---|---|
-| 言語 | 表示言語 |
-| 配色 | 画面の配色（[配色](#配色)を参照） |
-| スクロール速度 | ホイール1ノッチ分を動かしきるまでの時間（[スクロール](#スクロール)を参照） |
-| スクロール加減速度 | 動き出しと止まり際にかける時間 |
-| バッテリー時にFPS制限 | バッテリー動作中はフレームレートを30FPSに抑えます |
+| 区分け | 設定項目 | 説明 |
+|---|---|---|
+| 表示 | 言語 | 表示言語 |
+| 表示 | 配色 | 画面の配色（[配色](#配色)を参照） |
+| 表示 | 送信色 | 送信データのログ表示色 |
+| 表示 | 受信色 | 受信データのログ表示色 |
+| 履歴 | 送信履歴数 | 通信方式ごとに記憶する送信履歴の件数（1〜100、既定値 20） |
+| 動作 | スクロール速度 | ホイール1ノッチ分を動かしきるまでの時間（[スクロール](#スクロール)を参照） |
+| 動作 | スクロール加減速度 | 動き出しと止まり際にかける時間 |
+| 動作 | バッテリー動作時 | **FPSを下げない**／**FPSを下げる**。FPSを下げるを選ぶと、バッテリー動作中はフレームレートを30FPSに抑えます |
 
 **TCPサーバ**
 
@@ -324,7 +430,6 @@ Hello{0D 0A}
 | 待ち受けポート | クライアントの接続を受け付けるポート番号 |
 | タイムアウト(ms) | 受信タイムアウト |
 | 送信終端・受信終端 | シリアルと同様 |
-| 送信色・受信色 | シリアルと同様 |
 
 同時接続は **1台のみ**です。クライアントが切断すると自動的に次の接続の待ち受けを再開します。
 
@@ -337,7 +442,6 @@ Hello{0D 0A}
 | 接続タイムアウト(ms) | 接続が確立するまでの最大待ち時間 |
 | タイムアウト(ms) | 受信タイムアウト |
 | 送信終端・受信終端 | シリアルと同様 |
-| 送信色・受信色 | シリアルと同様 |
 
 ### 受信タイムアウト
 
@@ -385,7 +489,7 @@ Hello{0D 0A}
 - **標準** — 内蔵のライト・ダークに加え、OSのライト／ダーク設定に追従する**OSの設定に従う**
 - **テーマファイル** — 実行ファイルと同じ場所にある `themes` フォルダから読み込んだ配色
 
-後者はJSONファイルです。編集するとアプリを再起動しなくてもその場で反映されます。ファイルの書き方と指定できる色の一覧は、`themes` フォルダの `README_ja.txt` を参照してください。
+後者はJSONファイルです。編集するとアプリを再起動しなくてもその場で反映されます。ファイルの書き方と指定できる色の一覧は、`themes` フォルダの `THEME_README_ja.txt` を参照してください。
 
 ### 設定ファイル
 
@@ -405,7 +509,7 @@ BuMoSm Terminalは同時に1つのインスタンスしか起動できません�
 
 ## ライセンス
 
-Copyright 2026 Hiroki
+Copyright 2026 nabehiro  
 [Apache License, Version 2.0](LICENSE) のもとで公開しています。
 
 本ソフトウェアは現状のまま（"as is"）提供されます。  
